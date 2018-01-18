@@ -18,7 +18,6 @@ class ApacheLog:
     
     def check(self,line):
         for rule in self.rules:
-           regex_flags = re.IGNORECASE | re.UNICODE
            pattern = rule["pattern"]
            result = pattern.search(line)
            
@@ -30,7 +29,6 @@ class ApacheLog:
                   
     def collect(self,line):
         for rule in self.rules:
-           regex_flags = re.IGNORECASE | re.UNICODE
            pattern = rule["pattern"]
            result = pattern.search(line)
            
@@ -46,6 +44,7 @@ class ApacheLog:
                      print rule
                  else :
                   print key,group
+                  
 
 if __name__ == "__main__":
     al = ApacheLog()

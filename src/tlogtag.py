@@ -1,61 +1,85 @@
 import re
+from plugin import Plugin
+import os
+from ConfigParser import Error as BaseConfigError
+from Config import Conf
+from identify import LogIdentify
 
+DEFAULT_ENCODING = 'latin1'
+DEFAULT_SECTION = 'DEFAULT'
+CONFIG_SECTION = 'config'
+PLUGIN_ID = 'plugin_id'
+
+
+class WrongPluginError(BaseConfigError):
+    pass
 
 class Tlogtag:
     
     def __init__(self):
         print "__init__"
-
-    def replace_aliases(self, aliases):
-        plugin_rules = self.rules()
-        for rulename, rule in plugin_rules.iteritems():
-            if 'regexp' not in rule:
-                print('Invalid rule: %s' % rulename)
-                continue
-            regexp = rule['regexp']
-            search = re.findall('\\\\\\w\\w+', regexp, re.UNICODE)
-            if search:
-                for string in search:
-                    repl = string[1:]
-                    if aliases.has_option('regexp', repl):
-                        value = aliases.get('regexp', repl)
-                        regexp = regexp.replace(string, value)
-                        self.set(rulename, 'regexp', regexp)
-
-
-    def _replace_variables(self, value, groups, rounds = 2):
-        for i in range(rounds):
-            search = self.__regexReplVariables.findall(value)
-            if search:
-                for string in search:
-                    var = string[2:-1]
-                    if groups.has_key(var):
-                        value = value.replace(string, str(groups[var]))
-
-        return value
-    
-    
-    def apache_log(self):
-        regexp = """((?P<dst>\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})(:(?P<port>\d{1,5}))? )?(?P<src>\S+) (?P<id>\S+) (?P<user>\S+) \[(?P<date>\d{2}\/\w{3}\/\d{4}:\d{2}:\d{2}:\d{2})\s+[+-]\d{4}\] \"(?P<request>[^\"]*)\" (?P<code>\d{3}) ((?P<size>\d+)|-)( \"(?P<referer_uri>[^\"]*)\" \"(?P<useragent>[^\"]*)\")?$"""
-        text = """183.171.88.167 - - [02/Jan/2018:20:54:15 -0800] "GET /tablefilter.js HTTP/1.1" 200 6670"""
-        print regexp
+        self.__plugins_dir = os.path.join(os.path.dirname(__file__), 'plugins')
+        self.__aliases = Conf()
+        self.__configuration = Conf()
+        self.__plugins =[]
+        self.__configuration.read([os.path.join(os.path.dirname(__file__), 'config.cfg')], 'latin1')
+        self.__aliases.read([os.path.join(os.path.dirname(__file__), 'aliases.cfg')], 'latin1')
         
-        #regexp = self.rule['regexp']
-        regex_flags = re.IGNORECASE | re.UNICODE
-        pattern = re.compile(regexp, regex_flags)
-        result = pattern.search(text)
-        groups  = result.groupdict()
-        print groups
-        for key, group in groups.iteritems():
-            if group is None:
-                group = ''
-                value = ''
-                value = str(group.encode('utf-8'))
-                print key,group
+    def __update_plugin_and_add_to_list(self, plugin):
+        plugin.replace_aliases(self.__aliases)
+        plugin.replace_config(self.__configuration)
+        self.__plugins.append(plugin)
+ 
+ 
+    def __create_plugin_from_path(self,conf_path, encoding = DEFAULT_ENCODING):
+        if not os.path.exists(conf_path):
+            raise WrongPluginError('Unable to read plugin configuration at (%s)' % conf_path)
+        plugin = Plugin()
+        plugin.read([conf_path], encoding)
         
-        print "+++"
+        if plugin.has_option(CONFIG_SECTION, 'custom_functions_file'):
+                self.__load_plugin_custom_functions(plugin.get(DEFAULT_SECTION, PLUGIN_ID), plugin.get(CONFIG_SECTION, 'custom_functions_file'))
 
+        return plugin
+    
+    def __load_plugin_custom_functions(self, plugin_id, custom_plugin_functions_file):
+        print('Loading custom plugin functions for pid: %s' % plugin_id)
+        if os.path.isfile(custom_plugin_functions_file):
+            f = open(custom_plugin_functions_file, 'rb')
+            lines = f.read()
+            result = re.findall('Start Function\\s+(\\w+)\n(.*?)End Function', lines, re.M | re.S)
+            function_list = {}
+            for name, function in result:
+                print('Loading function: %s' % name)
+                try:
+                    exec function.strip() in function_list
+                    function_name = '%s_%s' % (name, plugin_id)
+                    print('Adding function :%s' % function_name)
+                    setattr(Plugin, function_name, function_list[name])
+                except Exception as e:
+                    print('Custom function error: %s' % str(e))
 
-if __name__ == "__main__":
-    tlog = Tlogtag()
-    tlog.apache_log()
+        else:
+            print('Custom plugin functions file does not exist!')
+    
+     
+    def load_plugins(self):
+        f_list = os.listdir(self.__plugins_dir)
+        for i in f_list:
+           if os.path.splitext(i)[1] == '.cfg':
+              plugin = self.__create_plugin_from_path(os.path.join(self.__plugins_dir,i))
+              self.__update_plugin_and_add_to_list(plugin)
+              
+              print i
+    
+     
+    def collect_log(self,file):
+        print file 
+        li = LogIdentify() 
+        li.idendtify_logfile(self.__plugins, file)
+
+if __name__ == "__main__":        
+    t = Tlogtag()
+    t.load_plugins()
+    t.collect_log(os.path.join(os.path.dirname(__file__), 'testdata',"localhost_access_log.2017-09-20.txt"))
+   
