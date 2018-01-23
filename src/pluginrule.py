@@ -114,4 +114,9 @@ class RuleMatch(object):
         except KeyError:
             info('Event has no type, check plugin configuration!')
             return None
+        for key, value in self.rule.iteritems():
+            if key not in ('regexp', 'precheck'):
+                value = value.encode('utf-8')
+                print key,self.plugin.get_replace_value(value, self.groups, self._replace_assessment[key])
+                
         

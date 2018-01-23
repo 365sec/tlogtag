@@ -3,7 +3,8 @@ from plugin import Plugin
 import os
 from ConfigParser import Error as BaseConfigError
 from Config import Conf
-from identify import LogIdentify
+from logcollect import  Logcollect
+import sys
 
 DEFAULT_ENCODING = 'latin1'
 DEFAULT_SECTION = 'DEFAULT'
@@ -73,13 +74,20 @@ class Tlogtag:
               print i
     
      
-    def collect_log(self,file):
-        print file 
-        li = LogIdentify() 
-        li.idendtify_logfile(self.__plugins, file)
-
+    def collect_log(self,path):
+        print path 
+        lc = Logcollect(self.__plugins)
+        lc.collect_dir(path)
+        
+        
+    
+        
 if __name__ == "__main__":        
+    dir = "/"
+    print sys.argv
+    if len(sys.argv) > 1:
+        dir = sys.argv[1]
     t = Tlogtag()
     t.load_plugins()
-    t.collect_log(os.path.join(os.path.dirname(__file__), 'testdata',"localhost_access_log.2017-09-20.txt"))
-   
+    t.collect_log(dir)
+  
