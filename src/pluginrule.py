@@ -130,7 +130,7 @@ class RuleMatch(object):
                 source[key] = self.plugin.get_replace_value(value, self.groups, self._replace_assessment[key])
                 ip_reg = re.match('\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}',source[key])
                 if ip_reg != None:
-                    reader = geoip2.database.Reader('./././static/ip_info/GeoLite2-City.mmdb')
+                    reader = geoip2.database.Reader('../ip_info/GeoLite2-City.mmdb')
                     ip_reg1 = re.match('(10\.\d{1,3}\.\d{1,3}\.\d{1,3})|(172\.(1[6-9]|2[0-9]|3[0-1])\.\d{1,3}\.\d{1,3})|(192\.168\.\d{1,3}\.\d{1,3})',source[key])
                     if ip_reg1 != None:
                         key1 = key + "_address"
