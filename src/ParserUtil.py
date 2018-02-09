@@ -6,9 +6,10 @@ import re
 import socket
 import time
 from hashlib import md5
-import GeoIP
+#import GeoIP
 try:
-    GEOIPDB = GeoIP.open('/usr/share/geoip/GeoLiteCity.dat', GeoIP.GEOIP_STANDARD)
+    print "no"
+    #GEOIPDB = GeoIP.open('/usr/share/geoip/GeoLiteCity.dat', GeoIP.GEOIP_STANDARD)
 except:
     print 'GeoIP module not loaded, please check it'
     GEOIPDB = None

@@ -31,7 +31,6 @@ class ApacheLog:
         for rule in self.rules:
            pattern = rule["pattern"]
            result = pattern.search(line)
-           
            if result:
                groups  = result.groupdict()
                print groups

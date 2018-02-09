@@ -1,3 +1,5 @@
+# -*- coding:utf-8 -*-
+
 import re
 from plugin import Plugin
 import os
@@ -5,6 +7,7 @@ from ConfigParser import Error as BaseConfigError
 from Config import Conf
 from logcollect import  Logcollect
 import sys
+import getopt
 
 DEFAULT_ENCODING = 'latin1'
 DEFAULT_SECTION = 'DEFAULT'
@@ -74,10 +77,10 @@ class Tlogtag:
               print i
     
      
-    def collect_log(self,path):
+    def collect_log(self,path,index_name,index_type,dst_ip):
         print path 
         lc = Logcollect(self.__plugins)
-        lc.collect_dir(path)
+        lc.collect_dir(path,index_name,index_type,dst_ip)
         
         
     
@@ -87,7 +90,12 @@ if __name__ == "__main__":
     print sys.argv
     if len(sys.argv) > 1:
         dir = sys.argv[1]
+        index_name = sys.argv[2]
+        index_type = sys.argv[3]
+        dst_ip = sys.argv[4]
+    print index_name
+    print index_type
     t = Tlogtag()
     t.load_plugins()
-    t.collect_log(dir)
+    t.collect_log(dir,index_name,index_type,dst_ip)#传递索引名（即任务名），类型名（即资产id），目的ip（即资产ip）
   

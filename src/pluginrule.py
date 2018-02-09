@@ -1,12 +1,23 @@
-import re
-from syslog_log import *
+# -*- coding:utf-8 -*-
 
+import re
+import json
+from syslog_log import *
+import geoip2.database
+import sys
+default_encoding="utf-8"
+if(default_encoding!=sys.getdefaultencoding()):
+    reload(sys)
+    sys.setdefaultencoding(default_encoding)
+cn_list = ["局域网"]
+cn_list = json.dumps(cn_list)
+cn_list = json.loads(cn_list)
 
 class RuleMatch(object):
     NEWLINE = '\\n'
 
     def __init__(self, name, rule, plugin):
-        debug('Adding rule (%s)..' % name)
+      #  debug('Adding rule (%s)..' % name)
         self.rule = rule
         self.name = name
         self.plugin = plugin
@@ -113,10 +124,28 @@ class RuleMatch(object):
             event_type = self.rule['event_type']
         except KeyError:
             info('Event has no type, check plugin configuration!')
-            return None
+        source = {}
         for key, value in self.rule.iteritems():
             if key not in ('regexp', 'precheck'):
-                value = value.encode('utf-8')
-                print key,self.plugin.get_replace_value(value, self.groups, self._replace_assessment[key])
+                source[key] = self.plugin.get_replace_value(value, self.groups, self._replace_assessment[key])
+                ip_reg = re.match('\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}',source[key])
+                if ip_reg != None:
+                    reader = geoip2.database.Reader('./././static/ip_info/GeoLite2-City.mmdb')
+                    ip_reg1 = re.match('(10\.\d{1,3}\.\d{1,3}\.\d{1,3})|(172\.(1[6-9]|2[0-9]|3[0-1])\.\d{1,3}\.\d{1,3})|(192\.168\.\d{1,3}\.\d{1,3})',source[key])
+                    if ip_reg1 != None:
+                        key1 = key + "_address"
+                        source[key1] = cn_list[0]
+                    else:
+                        try:
+                            response = reader.city(source[key])
+                            country = response.country.names['zh-CN']
+                            province = response.subdivisions[0].names['zh-CN']
+                            city = response.city.names['zh-CN']
+                            context = country+" "+province+" "+city
+                            key1 = key+"_address"
+                            source[key1] = context
+                        except:
+                            pass
+        return source
                 
         

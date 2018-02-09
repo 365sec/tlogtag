@@ -1,3 +1,4 @@
+# -*- coding:utf-8 -*-
 
 class LogIdentify:
     
@@ -25,12 +26,16 @@ class LogIdentify:
     
     def idendtify_logfile(self,plugins,path):
         f = open(path,'rb') 
-        line  = f.readline()
+        for i in range(50):
+            line  = f.readline().strip()
+            if len(line) > self._MAX_LINE_LEN :
+                f.close()
+                return None
+            if self.identify_line(plugins,line)!=None:
+                f.close()
+                return self.identify_line(plugins,line)
         f.close()
-        print len(line)
-        if len(line) > self._MAX_LINE_LEN :
-            return None
-        return self.identify_line(plugins,line)
+        return plugins[0]
         
         
         
