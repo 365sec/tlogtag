@@ -1,13 +1,27 @@
 # -*- coding:utf-8 -*-
 
-import os
+import pymongo
+from pymongo import MongoClient
 from  identify  import LogIdentify
 from elasticsearch import Elasticsearch
 from elasticsearch.helpers import bulk
 import uuid
+import ConfigParser
+import os
+import json
 
+conf = ConfigParser.ConfigParser()
+conf.read(os.path.join(os.path.dirname(__file__),"../../","log_analysis.cfg"))
+# print conf.sections()
+str_es_hosts = conf.get("elasticsearch", "hosts")
+es_hosts = json.loads(str_es_hosts)
+es_timeout = int(conf.get("elasticsearch", "timeout"))
+client = Elasticsearch(hosts=es_hosts,timeout=es_timeout)
 
-client = Elasticsearch(hosts=["172.16.39.231","172.16.39.232","172.16.39.233","172.16.39.234"],timeout=5000)
+mongo_host = conf.get("mongodb", "host")
+mongo_port = int(conf.get("mongodb", "port"))
+mongo_client = MongoClient(mongo_host,mongo_port)
+
 
 class Logcollect :
     def __init__(self,plugins):
@@ -41,19 +55,31 @@ class Logcollect :
             print "collect---------"
             f = open(file,'rb') 
             actions = []
+            mongo_actions = []
             i = 0
+            mongo_db = mongo_client[index_name]
+            collections = mongo_db[index_type]
             for line in f:
                 action_dict = self.collect(plugin, line,dst_ip)
+                mongo_dict = {}
+                mongo_dict["original_text"] = (action_dict.get("_source",{})).get("message","")
+                mongo_dict["checked"] = (action_dict.get("_source",{})).get("checked","0")
+                mongo_dict["color"] = (action_dict.get("_source",{})).get("color","")
+                mongo_dict["method"] = (action_dict.get("_source",{})).get("request_method","")
+                mongo_actions.append(mongo_dict)
                 i += 1
                 if action_dict: 
                     actions.append(action_dict)
                 if (i == 10000):
                     bulk(client,actions,index=index_name,doc_type=index_type,chunk_size=2000)
+                    collections.insert_many(mongo_actions)
                     i = 0
+                    mongo_actions = []
                     actions = []
                     print "success"
             print "success"
             bulk(client,actions,index=index_name,doc_type=index_type,chunk_size=2000)
+            collections.insert_many(mongo_actions)
             f.close() 
         
     
